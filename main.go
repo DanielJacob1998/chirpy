@@ -5,6 +5,7 @@ import (
     "log"
     "net/http"
     "os"
+    "sync/atomic"
 
     "github.com/bootdotdev/learn-http-servers/internal/database"
     "github.com/joho/godotenv"
@@ -12,7 +13,9 @@ import (
 )
 
 type apiConfig struct {
-    db *sql.DB  // Change this to *sql.DB
+    fileserverHits atomic.Int32
+    db             *database.Queries
+    platform       string
 }
 
 func main() {
@@ -33,20 +36,27 @@ func main() {
     if err != nil {
         log.Fatalf("Error opening database: %s", err)
     }
+    dbQueries := database.New(dbConn)
 
     apiCfg := apiConfig{
-        db: dbConn,
+        fileserverHits: atomic.Int32{},
+        db:             dbQueries,
+        platform:       platform,
     }
 
     mux := http.NewServeMux()
-    mux.Handle("/app/", http.StripPrefix("/app", http.FileServer(http.Dir(filepathRoot))))
+    fsHandler := apiCfg.middlewareMetricsInc(http.StripPrefix("/app", http.FileServer(http.Dir(filepathRoot))))
+    mux.Handle("/app/", fsHandler)
 
-    mux.HandleFunc("/api/healthz", handlerReadiness)
-    mux.HandleFunc("/api/chirps", apiCfg.handlerChirpsCreate)  // note the apiCfg.
-    mux.HandleFunc("/api/users", apiCfg.handlerUsersCreate)
-    mux.HandleFunc("/admin/reset", apiCfg.handlerReset)
-    mux.HandleFunc("/admin/metrics", apiCfg.handlerMetrics)
-    
+    mux.HandleFunc("GET /api/healthz", handlerReadiness)
+
+    mux.HandleFunc("POST /api/users", apiCfg.handlerUsersCreate)
+
+    mux.HandleFunc("POST /api/chirps", apiCfg.handlerChirpsCreate)
+
+    mux.HandleFunc("POST /admin/reset", apiCfg.handlerReset)
+    mux.HandleFunc("GET /admin/metrics", apiCfg.handlerMetrics)
+
     srv := &http.Server{
         Addr:    ":" + port,
         Handler: mux,
