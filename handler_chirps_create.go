@@ -22,7 +22,7 @@ type Chirp struct {
 func (cfg *apiConfig) handlerChirpsCreate(w http.ResponseWriter, r *http.Request) {
     type parameters struct {
         Body   string    `json:"body"`
-        UserID uuid.UUID `json:"user_id`
+        UserID string `json:"user_id"`
     }
 
     decoder := json.NewDecoder(r.Body)
@@ -33,15 +33,15 @@ func (cfg *apiConfig) handlerChirpsCreate(w http.ResponseWriter, r *http.Request
         return
     }
 
-    cleaned, err := validateChirp(params.Body)
+   userID, err := uuid.Parse(params.UserID)
     if err != nil {
-        respondWithError(w, http.StatusBadRequest, err.Error(), err)
-        return
+        respondWithError(w, http.StatusBadRequest, "Invalid user_id", err)
+    return
     }
 
     chirp, err := cfg.db.CreateChirp(r.Context(), database.CreateChirpParams{
         Body:   cleaned,
-        UserID: params.UserID,
+        UserID: userID,  // Now pass the parsed UUID
     })
     if err != nil {
         respondWithError(w, http.StatusInternalServerError, "Couldn't create chirp", err)

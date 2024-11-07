@@ -47,12 +47,21 @@ func main() {
     mux := http.NewServeMux()
     fsHandler := apiCfg.middlewareMetricsInc(http.StripPrefix("/app", http.FileServer(http.Dir(filepathRoot))))
     mux.Handle("/app/", fsHandler)
-
+    
+    mux.HandleFunc("/api/chirps", func(w http.ResponseWriter, r *http.Request) {
+    if r.Method == http.MethodGet {
+        apiCfg.handlerChirpsRetrieve(w, r)
+        return
+    }
+    if r.Method == http.MethodPost {
+        apiCfg.handlerChirpsCreate(w, r)
+        return
+    }
+})
+    
     mux.HandleFunc("/api/healthz", handlerReadiness)
 
     mux.HandleFunc("/api/users", apiCfg.handlerUsersCreate)
-
-    mux.HandleFunc("/api/chirps", apiCfg.handlerChirpsCreate)
 
     mux.HandleFunc("/admin/reset", apiCfg.handlerReset)
     mux.HandleFunc("/admin/metrics", apiCfg.handlerMetrics)
@@ -61,7 +70,7 @@ func main() {
         Addr:    ":" + port,
         Handler: mux,
     }
-
+    
     log.Printf("Serving on port: %s\n", port)
     log.Fatal(srv.ListenAndServe())
 }
