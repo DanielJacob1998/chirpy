@@ -2,8 +2,22 @@ package main
 
 import "net/http"
 
-func (cfg *apiConfig) resetHandler(w http.ResponseWriter, r *http.Request) {
-    w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-    w.WriteHeader(http.StatusOK)
-    cfg.fileserverHits.Store(0)
+func (cfg *apiConfig) handlerReset(w http.ResponseWriter, r *http.Request) {
+    if r.Method != http.MethodPost {
+        respondWithError(w, http.StatusMethodNotAllowed, "Method not allowed", nil)
+        return
+    }
+
+    if cfg.platform != "dev" {
+        respondWithError(w, http.StatusForbidden, "Reset is only allowed in dev environment", nil)
+        return
+    }
+
+    err := cfg.db.Reset(r.Context())
+    if err != nil {
+        respondWithError(w, http.StatusInternalServerError, "Couldn't reset database", err)
+        return
+    }
+
+    respondWithJSON(w, http.StatusOK, struct{}{})
 }
