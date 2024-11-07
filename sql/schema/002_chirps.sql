@@ -1,4 +1,4 @@
--- name: create chirps table
+-- name: create-chirps-table
 CREATE TABLE chirps (
     id UUID PRIMARY KEY,
     created_at TIMESTAMP NOT NULL,
@@ -8,5 +8,7 @@ CREATE TABLE chirps (
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
--- name: drop chirps table
+---- create above / drop below ----
+
+-- name: drop-chirps-table
 DROP TABLE chirps;

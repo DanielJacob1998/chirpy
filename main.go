@@ -5,7 +5,6 @@ import (
     "log"
     "net/http"
     "os"
-    "sync/atomic"
 
     "github.com/bootdotdev/learn-http-servers/internal/database"
     "github.com/joho/godotenv"
@@ -13,9 +12,7 @@ import (
 )
 
 type apiConfig struct {
-    fileserverHits atomic.Int32
-    db             *database.Queries
-    platform       string
+    db *sql.DB  // Change this to *sql.DB
 }
 
 func main() {
@@ -36,20 +33,16 @@ func main() {
     if err != nil {
         log.Fatalf("Error opening database: %s", err)
     }
-    dbQueries := database.New(dbConn)
 
     apiCfg := apiConfig{
-        fileserverHits: atomic.Int32{},
-        db:             dbQueries,
-        platform:       platform,
+        db: dbConn,
     }
 
     mux := http.NewServeMux()
-    fsHandler := apiCfg.middlewareMetricsInc(http.StripPrefix("/app", http.FileServer(http.Dir(filepathRoot))))
-    mux.Handle("/app/", fsHandler)
+    mux.Handle("/app/", http.StripPrefix("/app", http.FileServer(http.Dir(filepathRoot))))
 
     mux.HandleFunc("/api/healthz", handlerReadiness)
-    mux.HandleFunc("/api/validate_chirp", handlerChirpsValidate)
+    mux.HandleFunc("/api/chirps", apiCfg.handlerChirpsCreate)  // note the apiCfg.
     mux.HandleFunc("/api/users", apiCfg.handlerUsersCreate)
     mux.HandleFunc("/admin/reset", apiCfg.handlerReset)
     mux.HandleFunc("/admin/metrics", apiCfg.handlerMetrics)
