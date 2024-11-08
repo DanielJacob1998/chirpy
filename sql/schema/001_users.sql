@@ -1,9 +1,7 @@
 -- +goose Up
-CREATE TABLE users (
-    id uuid PRIMARY KEY,
-    created_at timestamp NOT NULL,
-    updated_at timestamp NOT NULL,
-    email text NOT NULL UNIQUE
-);
+ALTER TABLE users
+ADD COLUMN hashed_password TEXT DEFAULT 'unset';
+
 -- +goose Down
-DROP TABLE users;
+ALTER TABLE users
+DROP COLUMN hashed_password;

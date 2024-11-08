@@ -1,59 +1,63 @@
 package main
 
 import (
+    "database/sql"
     "log"
     "net/http"
-    "github.com/gorilla/mux"
+    "os"
+    "sync/atomic"
+
+    "github.com/bootdotdev/learn-http-servers/internal/database"
+    "github.com/joho/godotenv"
+    _ "github.com/lib/pq"
 )
 
 func main() {
     const filepathRoot = "."
     const port = "8080"
-    
-    // Initialize the API configuration
-    apiCfg := NewAPIConfig()
 
-    // Setup routes using the helper function
-    router := setupRoutes(apiCfg, filepathRoot)
-
-    // Create server
-    srv := &http.Server{
-        Addr:    ":" + port,
-        Handler: router,
+    godotenv.Load()
+    dbURL := os.Getenv("DB_URL")
+    if dbURL == "" {
+        log.Fatal("DB_URL must be set")
+    }
+    platform := os.Getenv("PLATFORM")
+    if platform == "" {
+        log.Fatal("PLATFORM must be set")
     }
 
-    // Start server
+    dbConn, err := sql.Open("postgres", dbURL)
+    if err != nil {
+        log.Fatalf("Error opening database: %s", err)
+    }
+    dbQueries := database.New(dbConn)
+
+    apiCfg := apiConfig{
+        fileserverHits: atomic.Int32{},
+        db:             dbQueries,
+        platform:       platform,
+    }
+
+    mux := http.NewServeMux()
+    fsHandler := apiCfg.middlewareMetricsInc(http.StripPrefix("/app", http.FileServer(http.Dir(filepathRoot))))
+    mux.Handle("/app/", fsHandler)
+
+    mux.HandleFunc("GET /api/healthz", handlerReadiness)
+
+    mux.HandleFunc("POST /api/users", apiCfg.handlerUsersCreate)
+
+    mux.HandleFunc("POST /api/chirps", apiCfg.handlerChirpsCreate)
+    mux.HandleFunc("GET /api/chirps", apiCfg.handlerChirpsRetrieve)
+    mux.HandleFunc("GET /api/chirps/{chirpID}", apiCfg.handlerChirpsGet)
+
+    mux.HandleFunc("POST /admin/reset", apiCfg.handlerReset)
+    mux.HandleFunc("GET /admin/metrics", apiCfg.handlerMetrics)
+
+    srv := &http.Server{
+        Addr:    ":" + port,
+        Handler: mux,
+    }
+
     log.Printf("Serving on port: %s\n", port)
     log.Fatal(srv.ListenAndServe())
-}
-
-// SetupRoutes is below main for organization
-func setupRoutes(apiCfg apiConfig, filepathRoot string) *mux.Router {
-    router := mux.NewRouter()
-
-    // File server
-    fsHandler := apiCfg.middlewareMetricsInc(http.StripPrefix("/app", http.FileServer(http.Dir(filepathRoot))))
-    router.PathPrefix("/app/").Handler(fsHandler)
-
-    // API Routes
-    router.HandleFunc("/api/chirps/{chirpID}", func(w http.ResponseWriter, r *http.Request) {
-        vars := mux.Vars(r)
-        chirpID := vars["chirpID"]
-
-        switch r.Method {
-        case http.MethodGet:
-            apiCfg.handlerChirpsRetrieve(w, r, chirpID)
-        case http.MethodPost:
-            apiCfg.handlerChirpsCreate(w, r)
-        default:
-            http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-        }
-    })
-
-    router.HandleFunc("/api/healthz", apiCfg.handlerReadiness)
-    router.HandleFunc("/api/users", apiCfg.handlerUsersCreate)
-    router.HandleFunc("/admin/reset", apiCfg.handlerReset)
-    router.HandleFunc("/admin/metrics", apiCfg.handlerMetrics)
-
-    return router
 }

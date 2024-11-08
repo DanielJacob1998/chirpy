@@ -2,7 +2,6 @@ package main
 
 import (
     "database/sql"
-    "context"
     _ "github.com/lib/pq"
 )
 
@@ -15,19 +14,11 @@ func NewQueries(db *sql.DB) *Queries {
 }
 
 // Function to retrieve a single chirp by its ID
-func (q *Queries) GetChirpByID(ctx context.Context, id string) (*Chirp, error) {
-    var chirp Chirp
-
-    // Note: we do not reopen a db connection here, use the one in q.db
-    row := q.db.QueryRowContext(ctx, "SELECT id, created_at, updated_at, body, user_id FROM chirps WHERE id = $1", id)
-
-    err := row.Scan(&chirp.ID, &chirp.CreatedAt, &chirp.UpdatedAt, &chirp.Body, &chirp.UserID)
+func (q *Queries) GetChirpByID(id string) (*Chirp, error) {
+    chirp := &Chirp{}
+    err := q.db.QueryRow("SELECT id, created_at, updated_at, body, user_id FROM chirps WHERE id = $1", id).Scan(&chirp.ID, &chirp.CreatedAt, &chirp.UpdatedAt, &chirp.Body, &chirp.UserID)
     if err != nil {
-        if err == sql.ErrNoRows {
-            return nil, nil
-        }
         return nil, err
     }
-
-    return &chirp, nil
+    return chirp, nil
 }

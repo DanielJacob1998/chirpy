@@ -2,35 +2,49 @@ package main
 
 import (
     "net/http"
-    "github.com/gorilla/mux"
+
+    "github.com/google/uuid"
 )
 
-func (cfg *apiConfig) handlerChirpsRetrieve(w http.ResponseWriter, r *http.Request) {
-    // Extract the chirpID from the request URL.
-    vars := mux.Vars(r)
-    chirpID := vars["chirpID"]
-
-    // Fetch the chirp from the database.
-    dbChirp, err := cfg.db.GetChirpByID(r.Context(), chirpID)
+func (cfg *apiConfig) handlerChirpsGet(w http.ResponseWriter, r *http.Request) {
+    chirpIDString := r.PathValue("chirpID")
+    chirpID, err := uuid.Parse(chirpIDString)
     if err != nil {
-        respondWithError(w, http.StatusInternalServerError, "Error fetching chirp", err)
+        respondWithError(w, http.StatusBadRequest, "Invalid chirp ID", err)
         return
     }
 
-    if dbChirp == nil { // Or however you check for "not found"
-        respondWithError(w, http.StatusNotFound, "Chirp not found", nil)
+    dbChirp, err := cfg.db.GetChirp(r.Context(), chirpID)
+    if err != nil {
+        respondWithError(w, http.StatusNotFound, "Couldn't get chirp", err)
         return
     }
 
-    // Prepare the response with the single chirp.
-    chirp := Chirp{
+    respondWithJSON(w, http.StatusOK, Chirp{
         ID:        dbChirp.ID,
         CreatedAt: dbChirp.CreatedAt,
         UpdatedAt: dbChirp.UpdatedAt,
         UserID:    dbChirp.UserID,
         Body:      dbChirp.Body,
+    })
+}
+func (cfg *apiConfig) handlerChirpsRetrieve(w http.ResponseWriter, r *http.Request) {
+    dbChirps, err := cfg.db.GetChirps(r.Context())
+    if err != nil {
+        respondWithError(w, http.StatusInternalServerError, "Couldn't retrieve chirps", err)
+        return
     }
 
-    // Respond with JSON containing the chirp.
-    respondWithJSON(w, http.StatusOK, chirp)
+    chirps := []Chirp{}
+    for _, dbChirp := range dbChirps {
+        chirps = append(chirps, Chirp{
+            ID:        dbChirp.ID,
+            CreatedAt: dbChirp.CreatedAt,
+            UpdatedAt: dbChirp.UpdatedAt,
+            UserID:    dbChirp.UserID,
+            Body:      dbChirp.Body,
+        })
+    }
+
+    respondWithJSON(w, http.StatusOK, chirps)
 }

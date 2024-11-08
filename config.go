@@ -5,7 +5,8 @@ import (
     "log"
     "os"
     "sync/atomic"
-
+    
+    "github.com/joho/godotenv"
     "github.com/bootdotdev/learn-http-servers/internal/database"
     _ "github.com/lib/pq"
 )
