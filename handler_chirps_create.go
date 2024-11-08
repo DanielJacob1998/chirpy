@@ -33,16 +33,24 @@ func (cfg *apiConfig) handlerChirpsCreate(w http.ResponseWriter, r *http.Request
         return
     }
 
-   userID, err := uuid.Parse(params.UserID)
+    userID, err := uuid.Parse(params.UserID)
     if err != nil {
         respondWithError(w, http.StatusBadRequest, "Invalid user_id", err)
-    return
+        return
     }
-
+    
+    cleanedBody, err := validateChirp(params.Body)
+    if err != nil {
+        respondWithError(w, http.StatusBadRequest, "Invalid chirp", err)
+        return
+    }
+    
+    // Remove the duplicate CreateChirp call and keep only this one
     chirp, err := cfg.db.CreateChirp(r.Context(), database.CreateChirpParams{
-        Body:   cleaned,
-        UserID: userID,  // Now pass the parsed UUID
+        Body:   cleanedBody,  // Use the cleaned body here
+        UserID: userID,
     })
+    
     if err != nil {
         respondWithError(w, http.StatusInternalServerError, "Couldn't create chirp", err)
         return
@@ -70,6 +78,29 @@ func validateChirp(body string) (string, error) {
     }
     cleaned := getCleanedBody(body, badWords)
     return cleaned, nil
+}
+
+func (cfg *apiConfig) handlerChirpsGet(w http.ResponseWriter, r *http.Request) {
+    // Get chirps from database
+    dbChirps, err := cfg.db.GetChirps(r.Context())
+    if err != nil {
+        respondWithError(w, http.StatusInternalServerError, "Couldn't get chirps", err)
+        return
+    }
+
+    // Convert database chirps to API chirps
+    chirps := []Chirp{}
+    for _, dbChirp := range dbChirps {
+        chirps = append(chirps, Chirp{
+            ID:        dbChirp.ID,
+            CreatedAt: dbChirp.CreatedAt,
+            UpdatedAt: dbChirp.UpdatedAt,
+            Body:      dbChirp.Body,
+            UserID:    dbChirp.UserID,
+        })
+    }
+
+    respondWithJSON(w, http.StatusOK, chirps)
 }
 
 func getCleanedBody(body string, badWords map[string]struct{}) string {

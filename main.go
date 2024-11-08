@@ -7,6 +7,7 @@ import (
     "os"
     "sync/atomic"
 
+    "github.com/gorilla/mux"
     "github.com/bootdotdev/learn-http-servers/internal/database"
     "github.com/joho/godotenv"
     _ "github.com/lib/pq"
@@ -43,14 +44,19 @@ func main() {
         db:             dbQueries,
         platform:       platform,
     }
-
-    mux := http.NewServeMux()
-    fsHandler := apiCfg.middlewareMetricsInc(http.StripPrefix("/app", http.FileServer(http.Dir(filepathRoot))))
-    mux.Handle("/app/", fsHandler)
     
-    mux.HandleFunc("/api/chirps", func(w http.ResponseWriter, r *http.Request) {
-    if r.Method == http.MethodGet {
-        apiCfg.handlerChirpsRetrieve(w, r)
+    router := mux.NewRouter()
+
+    // Static file server
+    fsHandler := apiCfg.middlewareMetricsInc(http.StripPrefix("/app", http.FileServer(http.Dir(filepathRoot))))
+    router.PathPrefix("/app/").Handler(fsHandler)
+
+    // API Routes
+    router.HandleFunc("/api/chirps/{chirpID}", func(w http.ResponseWriter, r *http.Request) {
+        if r.Method == http.MethodGet {
+            vars := mux.Vars(r)
+            chirpID := vars["chirpID"]
+            apiCfg.handlerChirpsRetrieve(w, r, chirpID)
         return
     }
     if r.Method == http.MethodPost {
@@ -58,17 +64,15 @@ func main() {
         return
     }
 })
-    
-    mux.HandleFunc("/api/healthz", handlerReadiness)
 
-    mux.HandleFunc("/api/users", apiCfg.handlerUsersCreate)
-
-    mux.HandleFunc("/admin/reset", apiCfg.handlerReset)
-    mux.HandleFunc("/admin/metrics", apiCfg.handlerMetrics)
+    router.HandleFunc("/api/healthz", handlerReadiness)
+    router.HandleFunc("/api/users", apiCfg.handlerUsersCreate)
+    router.HandleFunc("/admin/reset", apiCfg.handlerReset)
+    router.HandleFunc("/admin/metrics", apiCfg.handlerMetrics)
 
     srv := &http.Server{
         Addr:    ":" + port,
-        Handler: mux,
+        Handler: router,
     }
     
     log.Printf("Serving on port: %s\n", port)

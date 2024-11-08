@@ -2,25 +2,39 @@ package main
 
 import (
     "net/http"
+    "github.com/gorilla/mux"
 )
 
 func (cfg *apiConfig) handlerChirpsRetrieve(w http.ResponseWriter, r *http.Request) {
-    dbChirps, err := cfg.db.GetChirps(r.Context())
+
+    router := mux.NewRouter()
+    router.HandleFunc("/api/chirps/{chirpID}", cfg.handlerChirpsRetrieve).Methods("GET")
+
+    // Extract the chirpID from the request URL.
+    vars := mux.Vars(r)
+    chirpID := vars["chirpID"]
+
+    // Fetch the chirp from the database.
+    dbChirp, err := cfg.db.GetChirpByID(r.Context(), chirpID)
     if err != nil {
-        respondWithError(w, http.StatusInternalServerError, "Couldn't retrieve chirps", err)
+        respondWithError(w, http.StatusInternalServerError, "Error fetching chirp", err)
         return
     }
 
-    chirps := []Chirp{}
-    for _, dbChirp := range dbChirps {
-        chirps = append(chirps, Chirp{
-            ID:        dbChirp.ID,
-            CreatedAt: dbChirp.CreatedAt,
-            UpdatedAt: dbChirp.UpdatedAt,
-            UserID:    dbChirp.UserID,
-            Body:      dbChirp.Body,
-        })
+    if dbChirp == nil { // Or however you check for "not found"
+        respondWithError(w, http.StatusNotFound, "Chirp not found", nil)
+        return
     }
 
-    respondWithJSON(w, http.StatusOK, chirps)
+    // Prepare the response with the single chirp.
+    chirp := Chirp{
+        ID:        dbChirp.ID,
+        CreatedAt: dbChirp.CreatedAt,
+        UpdatedAt: dbChirp.UpdatedAt,
+        UserID:    dbChirp.UserID,
+        Body:      dbChirp.Body,
+    }
+
+    // Respond with JSON containing the chirp.
+    respondWithJSON(w, http.StatusOK, chirp)
 }
