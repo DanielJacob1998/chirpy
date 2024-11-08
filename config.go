@@ -7,7 +7,7 @@ import (
     "sync/atomic"
     
     "github.com/joho/godotenv"
-    "github.com/bootdotdev/learn-http-servers/internal/database"
+    "github.com/DanielJacob1998/chirpy/internal/database"
     _ "github.com/lib/pq"
 )
 

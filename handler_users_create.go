@@ -5,8 +5,8 @@ import (
     "net/http"
     "time"
 
-    "github.com/bootdotdev/learn-http-servers/internal/auth"
-    "github.com/bootdotdev/learn-http-servers/internal/database"
+    "github.com/DanielJacob1998/chirpy/internal/auth"
+    "github.com/DanielJacob1998/chirpy/internal/database"
     "github.com/google/uuid"
 )
 
