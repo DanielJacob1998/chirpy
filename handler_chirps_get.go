@@ -6,10 +6,6 @@ import (
 )
 
 func (cfg *apiConfig) handlerChirpsRetrieve(w http.ResponseWriter, r *http.Request) {
-
-    router := mux.NewRouter()
-    router.HandleFunc("/api/chirps/{chirpID}", cfg.handlerChirpsRetrieve).Methods("GET")
-
     // Extract the chirpID from the request URL.
     vars := mux.Vars(r)
     chirpID := vars["chirpID"]
