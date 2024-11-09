@@ -7,7 +7,6 @@ import (
     "os"
     "sync/atomic"
 
-    "github.com/DanielJacob1998/chirpy/internal/auth"
     "github.com/DanielJacob1998/chirpy/internal/database"
     "github.com/joho/godotenv"
     _ "github.com/lib/pq"

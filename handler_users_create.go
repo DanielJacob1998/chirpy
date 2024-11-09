@@ -4,7 +4,8 @@ import (
     "encoding/json"
     "net/http"
     "time"
-
+    "context"
+    
     "github.com/DanielJacob1998/chirpy/internal/auth"
     "github.com/DanielJacob1998/chirpy/internal/database"
     "github.com/google/uuid"
@@ -24,7 +25,10 @@ func (cfg *apiConfig) handlerUsersCreate(w http.ResponseWriter, r *http.Request)
         Email    string `json:"email"`
     }
     type response struct {
-        User
+        ID        uuid.UUID `json:"id"`
+        CreatedAt time.Time `json:"created_at"`
+        UpdatedAt time.Time `json:"updated_at"`
+        Email     string    `json:"email"`
     }
 
     decoder := json.NewDecoder(r.Body)
@@ -40,22 +44,37 @@ func (cfg *apiConfig) handlerUsersCreate(w http.ResponseWriter, r *http.Request)
         respondWithError(w, http.StatusInternalServerError, "Couldn't hash password", err)
         return
     }
-
-    user, err := cfg.db.CreateUser(r.Context(), database.CreateUserParams{
-        Email:          params.Email,
+    
+    // Create the user using the CreateUser function
+    userObj := database.CreateUserParams{
+        Email:         params.Email,
         HashedPassword: hashedPassword,
-    })
+    }
+    user, err := cfg.CreateUser(r.Context(), userObj)
     if err != nil {
-        respondWithError(w, http.StatusInternalServerError, "Couldn't create user", err)
+        respondWithError(w, http.StatusInternalServerError, "Couldn't insert user", err)
         return
     }
-
+    
+    // Construct the response using user details
     respondWithJSON(w, http.StatusCreated, response{
-        User: User{
-            ID:        user.ID,
-            CreatedAt: user.CreatedAt,
-            UpdatedAt: user.UpdatedAt,
-            Email:     user.Email,
-        },
+        ID:        user.ID,
+        CreatedAt: user.CreatedAt,
+        UpdatedAt: user.UpdatedAt,
+        Email:     user.Email,
     })
+}
+
+func (db *apiConfig) CreateUser(ctx context.Context, params database.CreateUserParams) (User, error) {
+    id, err := db.InsertUser(ctx, params.Email, params.HashedPassword)
+    if err != nil {
+        return User{}, err
+    }
+    user := User{
+        ID:        uuid.MustParse(id),
+        CreatedAt: time.Now(),
+        UpdatedAt: time.Now(),
+        Email:     params.Email,
+    }
+    return user, nil
 }
