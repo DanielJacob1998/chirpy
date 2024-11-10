@@ -20,3 +20,4 @@ func (q *Queries) InsertUser(ctx context.Context, email, hashedPassword string) 
     }
     return userID, nil
 }
+
