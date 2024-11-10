@@ -65,14 +65,16 @@ func (cfg *apiConfig) handlerUsersCreate(w http.ResponseWriter, r *http.Request)
     })
 }
 
-func (db *apiConfig) CreateUser(ctx context.Context, params database.CreateUserParams) (User, error) {
-    id, err := db.InsertUser(ctx, params.Email, params.HashedPassword)
+func (cfg *apiConfig) CreateUser(ctx context.Context, params database.CreateUserParams) (User, error) {
+    // Make sure InsertUser belongs to *database.Queries
+    id, err := cfg.db.InsertUser(ctx, params.Email, params.HashedPassword)
     if err != nil {
         return User{}, err
     }
+    
     user := User{
-        ID:        uuid.MustParse(id),
-        CreatedAt: time.Now(),
+        ID:        uuid.MustParse(id), // Ensure the id is a valid UUID
+        CreatedAt: time.Now(),         // Consider fetching actual creation time if possible
         UpdatedAt: time.Now(),
         Email:     params.Email,
     }

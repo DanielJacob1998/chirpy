@@ -8,6 +8,7 @@ import (
     "sync/atomic"
 
     "github.com/DanielJacob1998/chirpy/internal/database"
+    "github.com/DanielJacob1998/chirpy/internal/auth"
     "github.com/joho/godotenv"
     _ "github.com/lib/pq"
 )
@@ -46,7 +47,7 @@ func main() {
 
     mux.HandleFunc("POST /api/login", apiCfg.handlerLogin)
 
-    mux.HandleFunc("POST /api/users", apiCfg.handlerUsersCreate)
+    mux.HandleFunc("/api/users", apiCfg.handlerUsersCreate)
 
     mux.HandleFunc("POST /api/chirps", apiCfg.handlerChirpsCreate)
     mux.HandleFunc("GET /api/chirps", apiCfg.handlerChirpsRetrieve)

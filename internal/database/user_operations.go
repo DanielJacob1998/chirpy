@@ -1,24 +1,22 @@
 package database
 
 import (
-    "github.com/google/uuid"
-    "database/sql"
     _ "github.com/lib/pq"
+    "context"
+    "github.com/DanielJacob1998/chirpy/internal/auth"
 )
 
-func (q *Queries) InsertUser(email string, hashedPassword string) (string, error) {
-    // Generate a new UUID
-    userID := uuid.New().String()
-
-    // Execute the SQL insertion with the UUID
-    err := q.db.QueryRow(
-        "INSERT INTO users (id, email, hashed_password, created_at, updated_at) VALUES ($1, $2, $3, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP) RETURNING id",
-        userID, email, hashedPassword,
-    ).Scan(&userID)
-
+func (q *Queries) InsertUser(ctx context.Context, email, hashedPassword string) (string, error) {
+    var userID string
+    
+    // Assume your users table has columns email, hashed_password, and id
+    err := q.db.QueryRowContext(ctx, `
+        INSERT INTO users (email, hashed_password)
+        VALUES ($1, $2)
+        RETURNING id`, email, hashedPassword).Scan(&userID)
+    
     if err != nil {
         return "", err
     }
-
     return userID, nil
 }
