@@ -15,10 +15,25 @@ type apiConfig struct {
     fileserverHits atomic.Int32
     db             *database.Queries
     platform       string
+    jwtSecret      string    // Add this field
 }
 
 func NewAPIConfig() *apiConfig {
-    godotenv.Load()
+    err := godotenv.Load(".env")
+    if err != nil {
+        log.Printf("Error loading .env file: %v", err)
+    }
+
+    // Debug prints
+    dir, err := os.Getwd()
+    if err != nil {
+        log.Printf("Error getting working directory: %v", err)
+    }
+    log.Println("Current working directory:", dir)
+    log.Println("Environment variables loaded:")
+    log.Println("DB_URL:", os.Getenv("DB_URL"))
+    log.Println("PLATFORM:", os.Getenv("PLATFORM"))
+    log.Println("JWT_SECRET:", len(os.Getenv("JWT_SECRET")), "bytes")
 
     dbURL := os.Getenv("DB_URL")
     if dbURL == "" {
@@ -27,6 +42,10 @@ func NewAPIConfig() *apiConfig {
     platform := os.Getenv("PLATFORM")
     if platform == "" {
         log.Fatal("PLATFORM must be set")
+    }
+    jwtSecret := os.Getenv("JWT_SECRET")
+    if jwtSecret == "" {
+        log.Fatal("JWT_SECRET must be set")
     }
 
     dbConn, err := sql.Open("postgres", dbURL)
@@ -39,5 +58,6 @@ func NewAPIConfig() *apiConfig {
         fileserverHits: atomic.Int32{},
         db:             dbQueries,
         platform:       platform,
+        jwtSecret:      jwtSecret,
     }
 }
