@@ -1,23 +1,24 @@
 package database
 
 import (
-    _ "github.com/lib/pq"
+    "time"
     "context"
-    "github.com/DanielJacob1998/chirpy/internal/auth"
 )
 
 func (q *Queries) InsertUser(ctx context.Context, email, hashedPassword string) (string, error) {
     var userID string
     
-    // Assume your users table has columns email, hashed_password, and id
+    // Current timestamp for created_at and updated_at
+    now := time.Now()
+    
+    // Inserting user's email, hashed password, created_at, and updated_at
     err := q.db.QueryRowContext(ctx, `
-        INSERT INTO users (email, hashed_password)
-        VALUES ($1, $2)
-        RETURNING id`, email, hashedPassword).Scan(&userID)
+        INSERT INTO users (email, hashed_password, created_at, updated_at)
+        VALUES ($1, $2, $3, $4)
+        RETURNING id`, email, hashedPassword, now, now).Scan(&userID)
     
     if err != nil {
         return "", err
     }
     return userID, nil
 }
-
