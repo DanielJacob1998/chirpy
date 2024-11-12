@@ -15,7 +15,7 @@ type apiConfig struct {
     fileserverHits atomic.Int32
     db             *database.Queries
     platform       string
-    jwtSecret      string    // Add this field
+    jwtSecret      string
 }
 
 func NewAPIConfig() *apiConfig {
