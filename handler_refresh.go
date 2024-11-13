@@ -4,7 +4,7 @@ import (
     "net/http"
     "time"
 
-    "github.com/DanielJacob1998/cbirpy/internal/auth"
+    "github.com/DanielJacob1998/chirpy/internal/auth"
 )
 
 func (cfg *apiConfig) handlerRefresh(w http.ResponseWriter, r *http.Request) {
@@ -30,7 +30,7 @@ func (cfg *apiConfig) handlerRefresh(w http.ResponseWriter, r *http.Request) {
         time.Hour,
     )
     if err != nil {
-        respondWithError(w, http.StatusUnauthorized, "Couldn't validate token", err)
+        respondWithError(w, http.StatusUnauthorized, "Couldn't create access token", err)
         return
     }
 
