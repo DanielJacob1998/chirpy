@@ -4,8 +4,8 @@ import (
     "encoding/json"
     "net/http"
 
-    "github.com/bootdotdev/learn-http-servers/internal/auth"
-    "github.com/bootdotdev/learn-http-servers/internal/database"
+    "github.com/DanielJacob1998/chirpy/internal/auth"
+    "github.com/DanielJacob1998/chirpy/internal/database"
 )
 
 func (cfg *apiConfig) handlerUsersUpdate(w http.ResponseWriter, r *http.Request) {
