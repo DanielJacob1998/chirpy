@@ -26,10 +26,7 @@ func (cfg *apiConfig) handlerUsersCreate(w http.ResponseWriter, r *http.Request)
         Email    string `json:"email"`
     }
     type response struct {
-        ID        uuid.UUID `json:"id"`
-        CreatedAt time.Time `json:"created_at"`
-        UpdatedAt time.Time `json:"updated_at"`
-        Email     string    `json:"email"`
+        User
     }
 
     decoder := json.NewDecoder(r.Body)
@@ -45,19 +42,16 @@ func (cfg *apiConfig) handlerUsersCreate(w http.ResponseWriter, r *http.Request)
         respondWithError(w, http.StatusInternalServerError, "Couldn't hash password", err)
         return
     }
-    
-    // Create the user using the CreateUser function
-    userObj := database.CreateUserParams{
-        Email:         params.Email,
+
+    user, err := cfg.db.CreateUser(r.Context(), database.CreateUserParams{
+        Email:          params.Email,
         HashedPassword: hashedPassword,
-    }
-    user, err := cfg.CreateUser(r.Context(), userObj)
+    })
     if err != nil {
-        respondWithError(w, http.StatusInternalServerError, "Couldn't insert user", err)
+        respondWithError(w, http.StatusInternalServerError, "Couldn't create user", err)
         return
     }
-    
-    // Construct the response using user details
+
     respondWithJSON(w, http.StatusCreated, response{
         User: User{
             ID:          user.ID,
