@@ -12,11 +12,12 @@ import (
 )
 
 type User struct {
-    ID        uuid.UUID `json:"id"`
-    CreatedAt time.Time `json:"created_at"`
-    UpdatedAt time.Time `json:"updated_at"`
-    Email     string    `json:"email"`
-    Password  string    `json:"-"`
+    ID          uuid.UUID `json:"id"`
+    CreatedAt   time.Time `json:"created_at"`
+    UpdatedAt   time.Time `json:"updated_at"`
+    Email       string    `json:"email"`
+    Password    string    `json:"-"`
+    IsChirpyRed bool      `json:"is_chirpy_red"`
 }
 
 func (cfg *apiConfig) handlerUsersCreate(w http.ResponseWriter, r *http.Request) {
@@ -58,10 +59,13 @@ func (cfg *apiConfig) handlerUsersCreate(w http.ResponseWriter, r *http.Request)
     
     // Construct the response using user details
     respondWithJSON(w, http.StatusCreated, response{
-        ID:        user.ID,
-        CreatedAt: user.CreatedAt,
-        UpdatedAt: user.UpdatedAt,
-        Email:     user.Email,
+        User: User{
+            ID:          user.ID,
+            CreatedAt:   user.CreatedAt,
+            UpdatedAt:   user.UpdatedAt,
+            Email:       user.Email,
+            IsChirpyRed: user.IsChirpyRed,
+        },
     })
 }
 
