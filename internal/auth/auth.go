@@ -1,92 +1,114 @@
 package auth
 
 import (
+    "crypto/rand"
+    "encoding/hex"
+    "errors"
     "fmt"
     "net/http"
     "strings"
-    "golang.org/x/crypto/bcrypt"
+    "time"
+
     "github.com/golang-jwt/jwt/v5"
     "github.com/google/uuid"
-    "time"
-    "crypto/rand"
-    "encoding/hex"
+    "golang.org/x/crypto/bcrypt"
 )
 
+type TokenType string
+
+const (
+    // TokenTypeAccess -
+    TokenTypeAccess TokenType = "chirpy-access"
+)
+
+// ErrNoAuthHeaderIncluded -
+var ErrNoAuthHeaderIncluded = errors.New("no auth header included in request")
+
+// HashPassword -
 func HashPassword(password string) (string, error) {
-    hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+    dat, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
     if err != nil {
         return "", err
     }
-    return string(hash), nil
+    return string(dat), nil
 }
 
+// CheckPasswordHash -
 func CheckPasswordHash(password, hash string) error {
     return bcrypt.CompareHashAndPassword([]byte(hash), []byte(password))
 }
 
-func MakeJWT(userID uuid.UUID, tokenSecret string, expiresIn time.Duration) (string, error) {
-    claims := jwt.RegisteredClaims{
-        Issuer:    "chirpy",
+// MakeJWT -
+func MakeJWT(
+    userID uuid.UUID,
+    tokenSecret string,
+    expiresIn time.Duration,
+) (string, error) {
+    signingKey := []byte(tokenSecret)
+    token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.RegisteredClaims{
+        Issuer:    string(TokenTypeAccess),
         IssuedAt:  jwt.NewNumericDate(time.Now().UTC()),
         ExpiresAt: jwt.NewNumericDate(time.Now().UTC().Add(expiresIn)),
         Subject:   userID.String(),
-    }
-    token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-    return token.SignedString([]byte(tokenSecret))
+    })
+    return token.SignedString(signingKey)
 }
 
+// ValidateJWT -
 func ValidateJWT(tokenString, tokenSecret string) (uuid.UUID, error) {
-    claims := &jwt.RegisteredClaims{}
-    
-    // First, we parse the token
+    claimsStruct := jwt.RegisteredClaims{}
     token, err := jwt.ParseWithClaims(
         tokenString,
-        claims,
-        func(token *jwt.Token) (interface{}, error) {
-            return []byte(tokenSecret), nil
-        },
+        &claimsStruct,
+        func(token *jwt.Token) (interface{}, error) { return []byte(tokenSecret), nil },
     )
-
-    // Check for parsing errors
     if err != nil {
         return uuid.Nil, err
     }
 
-    // Check if token is valid
-    if !token.Valid {
-        return uuid.Nil, fmt.Errorf("invalid token")
-    }
-
-    // Get the user ID from the Subject claim
-    userID, err := uuid.Parse(claims.Subject)
+    userIDString, err := token.Claims.GetSubject()
     if err != nil {
         return uuid.Nil, err
     }
 
-    return userID, nil
+    issuer, err := token.Claims.GetIssuer()
+    if err != nil {
+        return uuid.Nil, err
+    }
+    if issuer != string(TokenTypeAccess) {
+        return uuid.Nil, errors.New("invalid issuer")
+    }
+
+    id, err := uuid.Parse(userIDString)
+    if err != nil {
+        return uuid.Nil, fmt.Errorf("invalid user ID: %w", err)
+    }
+    return id, nil
 }
 
+// GetBearerToken -
 func GetBearerToken(headers http.Header) (string, error) {
     authHeader := headers.Get("Authorization")
     if authHeader == "" {
-        return "", fmt.Errorf("Authorization header not found")
+        return "", ErrNoAuthHeaderIncluded
     }
-    
-    if !strings.HasPrefix(authHeader, "Bearer ") {
-        return "", fmt.Errorf("Authorization header must start with Bearer")
+    splitAuth := strings.Split(authHeader, " ")
+    if len(splitAuth) < 2 || splitAuth[0] != "Bearer" {
+        return "", errors.New("malformed authorization header")
     }
-    
-    return strings.TrimPrefix(authHeader, "Bearer "), nil
+
+    return splitAuth[1], nil
 }
 
+// MakeRefreshToken makes a random 256 bit token
+// encoded in hex
 func MakeRefreshToken() (string, error) {
-    slice := make([]byte, 32)
-    _, err := rand.Read(slice)  // We pass our slice to rand.Read
+    token := make([]byte, 32)
+    _, err := rand.Read(token)
     if err != nil {
         return "", err
     }
-    hexxed := hex.EncodeToString(slice)
-    return hexxed, nil
+    return hex.EncodeToString(token), nil
 }
 
 // GetAPIKey -

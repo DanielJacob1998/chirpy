@@ -64,6 +64,6 @@ func NewAPIConfig() *apiConfig {
         db:             dbQueries,
         platform:       platform,
         jwtSecret:      jwtSecret,
-        polkaKey:       polkaKey
+        polkaKey:       polkaKey,
     }
 }
